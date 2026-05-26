@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a0a0f">
+<title>KEIBA ANALYZER</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #0a0a0f !important;
+    color: #d8d0c0 !important;
+    color-scheme: dark;
+  }
+  body {
+    font-family: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+  /* iOSダークモード強制対応 */
+  @media (prefers-color-scheme: light) {
+    html, body { background: #0a0a0f !important; color: #d8d0c0 !important; }
+  }
+  /* 全要素のデフォルト色強制 */
+  div, span, button { color: inherit; }
+  .header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #1e1e2a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .header-sub { font-size: 8px; letter-spacing: 4px; color: #4a4a60; margin-bottom: 2px; }
+  .header-title { font-size: 16px; font-weight: 900; color: #ffd23a; letter-spacing: 2px; font-family: monospace; }
+  .clear-btn {
+    background: transparent; color: #5a5a70;
+    border: 1px solid #2a2a3a; border-radius: 4px;
+    padding: 6px 14px; cursor: pointer; font-size: 11px;
+  }
+  .container { max-width: 840px; margin: 0 auto; padding: 16px; }
+  .input-label { font-size: 11px; font-weight: 700; color: #ffd23a; margin-bottom: 6px; }
+  textarea {
+    width: 100%; height: 320px;
+    background: #1c1c28; border: 1px solid #44445a;
+    border-radius: 6px; color: #fff;
+    font-family: monospace; font-size: 11px;
+    padding: 10px; resize: vertical; outline: none;
+  }
+  .error {
+    color: #ff6060; font-size: 12px;
+    padding: 8px 12px; background: rgba(255,60,60,0.1);
+    border-radius: 4px; margin-top: 8px;
+  }
+  .analyze-btn {
+    width: 100%; padding: 14px;
+    background: #ffd23a; color: #000;
+    border: none; border-radius: 6px;
+    font-size: 15px; font-weight: 900;
+    letter-spacing: 4px; cursor: pointer;
+    margin-top: 10px;
+  }
+  .analyze-btn:disabled { background: #1c1c28; color: #444; cursor: not-allowed; }
+  .race-title { font-size: 18px; font-weight: 700; color: #f0e4cc; margin-bottom: 4px; }
+  .race-info { font-size: 12px; color: #7a7a8a; display: flex; gap: 12px; margin-bottom: 12px; }
+  .section-label { font-size: 10px; color: #5a5a70; letter-spacing: 3px; margin-bottom: 8px; }
+  .mark-desc {
+    margin-bottom: 14px; padding: 10px 14px;
+    background: #1c1c28; border: 1px solid #2a2a3a;
+    border-radius: 5px; font-size: 11px;
+    color: #9a9aaa; line-height: 1.8;
+  }
+  .mark-card {
+    background: #1c1c28; border-radius: 6px;
+    padding: 12px 14px; margin-bottom: 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .mark-big { font-size: 24px; font-weight: 900; min-width: 32px; text-align: center; }
+  .horse-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; border-radius: 4px;
+    font-weight: 900;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    letter-spacing: -0.5px; line-height: 1;
+  }
+  .horse-num-sm { width: 22px; height: 22px; font-size: 11px; border-width: 2px; }
+  .horse-num-md { width: 28px; height: 28px; font-size: 13px; border-width: 2px; }
+  .horse-num-lg { width: 36px; height: 36px; font-size: 17px; border-width: 2px; }
+  .horse-name { font-size: 15px; font-weight: 700; color: #f0e4cc; }
+  .horse-meta { font-size: 10px; color: #7a7a8a; margin-top: 2px; }
+  .horse-stat { text-align: right; }
+  .horse-stat-label { font-size: 9px; color: #7a7a8a; }
+  .horse-stat-val { font-size: 16px; font-weight: 900; }
+  .all-row {
+    padding: 10px 10px;
+    border-bottom: 1px solid #1e1e2a;
+  }
+  .all-row:nth-child(odd) { background: rgba(255,255,255,0.01); }
+  .all-row-header {
+    display: grid; grid-template-columns: 32px 1fr 60px 60px;
+    gap: 0 8px; align-items: center; margin-bottom: 6px;
+  }
+  .all-row-stats {
+    display: grid; grid-template-columns: 50px repeat(5, 1fr);
+    gap: 0 4px; margin-bottom: 3px; font-size: 10px;
+  }
+  .ranking-row {
+    display: grid; grid-template-columns: 32px 32px 1fr 60px 50px;
+    gap: 0 8px; align-items: center; padding: 6px 0;
+    border-bottom: 1px solid #2a2a3a;
+    padding-left: 8px; margin-left: -8px;
+    border-left: 3px solid transparent;
+  }
+  .ranking-row.market-signal {
+    background: rgba(255,60,60,0.10);
+    border-left: 3px solid #ff4444;
+  }
+  .market-badge {
+    font-size: 9px; background: #ff4444; color: #fff;
+    padding: 2px 6px; border-radius: 3px;
+    font-weight: 900; letter-spacing: 1px;
+    margin-left: 6px;
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="header-sub">KEIBA ANALYZER v9</div>
+      <div class="header-title">▶ KEIBA ANALYZER</div>
+    </div>
+    <button id="clearBtn" class="clear-btn" style="display:none;">クリア</button>
+  </div>
+
+  <div class="container">
+    <div id="inputView">
+      <div class="input-label">📊 レースデータ</div>
+      <textarea id="dataInput" placeholder="uma-x.jp のテキストをそのまま貼り付け"></textarea>
+      <div id="errorMsg" class="error" style="display:none;"></div>
+      <button id="analyzeBtn" class="analyze-btn" disabled>▶ 印を出す</button>
+    </div>
+    <div id="resultView" style="display:none;"></div>
+  </div>
+
+<script>
+// ============================================================
+// 枠色定数
+// ============================================================
+const MARK_COLOR = { '◎': '#e8a020', '○': '#9aaccc', '▲': '#c07830', '△': '#6a9070', '⭐︎': '#ffd23a' };
+
+const WAKU_COLORS = [
+  { bg: '#e8e8e8', grad: '#ffffff', text: '#1a1a1a', border: '#aaaaaa' },
+  { bg: '#1a1a1a', grad: '#3a3a3a', text: '#ffffff', border: '#555555' },
+  { bg: '#cc2222', grad: '#ee4444', text: '#ffffff', border: '#aa1111' },
+  { bg: '#1144bb', grad: '#3366dd', text: '#ffffff', border: '#0033aa' },
+  { bg: '#ccaa00', grad: '#eecc22', text: '#1a1a1a', border: '#aa8800' },
+  { bg: '#117722', grad: '#22aa33', text: '#ffffff', border: '#005511' },
+  { bg: '#cc5500', grad: '#ee7722', text: '#ffffff', border: '#aa3300' },
+  { bg: '#cc1177', grad: '#ee33aa', text: '#ffffff', border: '#aa0055' },
+];
+function getWakuNum(horseNum, totalHorses) {
+  if (totalHorses <= 8) return horseNum;
+  const tables = {
+    9:  [1,2,3,4,5,6,7,8,8],
+    10: [1,2,3,4,5,6,7,7,8,8],
+    11: [1,2,3,4,5,6,6,7,7,8,8],
+    12: [1,2,3,4,5,5,6,6,7,7,8,8],
+    13: [1,2,3,4,4,5,5,6,6,7,7,8,8],
+    14: [1,2,3,3,4,4,5,5,6,6,7,7,8,8],
+    15: [1,2,2,3,3,4,4,5,5,6,6,7,7,8,8],
+    16: [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8],
+    17: [1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,8],
+    18: [1,1,2,2,3,3,4,4,5,5,6,6,7,7,7,8,8,8],
+  };
+  const t = tables[Math.min(totalHorses, 18)];
+  if (!t) return Math.min(horseNum, 8);
+  return t[horseNum - 1] || 8;
+}
+
+
+// ============================================================
+// 既存ロジック (parseRaceData, runPrediction, getWakuNum 等)
+// ============================================================
+
+// ============================================================
+// ★ 騎手格テーブル削除 (ユーザー指示)
+// ★ 騎手による加点・減点は一切しない
+// ★ 騎手継続のみ「同じ騎手かどうか」の事実として参照
+// ============================================================
+
+// ============================================================
+// クラス重み
+// ============================================================
+const CENTRAL_GRADE = {
+  "GI": 10, "GII": 8, "GIII": 6, "L": 4.5, "オープン": 4,
+  "３勝": 3, "3勝": 3, "２勝": 2, "2勝": 2, "１勝": 1.5, "1勝": 1.5,
+  "未勝利": 1, "新馬": 1,
+};
+// ★ 地方の南関東クラスポイント (JRA基準で換算)
+const LOCAL_GRADE = {
+  "JpnI": 10, "JpnII": 8, "JpnIII": 6, "重賞": 5.5,
+  "A1": 5.0, "A2": 4.0, "B1": 3.5, "B2": 3.0, "B3": 2.5,
+  "C1": 2.0, "C2": 1.5, "C3": 1.0, "C4": 0.8,
+  "オープン": 4, "OP": 4,
+  "3歳": 2.0, "2歳": 1.5, "新馬": 1.0, "未勝利": 1.0,
+};
+function getCentralGrade(grade) {
+  if (!grade) return 1;
+  for (const [k, v] of Object.entries(CENTRAL_GRADE)) if (grade.includes(k)) return v;
+  return 1;
+}
+function getLocalGrade(grade) {
+  if (!grade) return 1;
+  // 上位クラスから順にチェック (A1がAに含まれないように)
+  const ordered = ["JpnI","JpnII","JpnIII","重賞","A1","A2","B1","B2","B3","C1","C2","C3","C4","オープン","OP","3歳","2歳","新馬","未勝利"];
+  for (const k of ordered) if (grade.includes(k)) return LOCAL_GRADE[k] || 1;
+  return 1;
+}
+
+function getDistCategory(dist) {
+  if (dist <= 1400) return "短距離";
+  if (dist <= 1700) return "マイル";
+  if (dist <= 2200) return "中距離";
+  return "長距離";
+}
+
+const LOCAL_VENUES = ["大井","川崎","船橋","浦和","門別","園田","姫路","名古屋","笠松","金沢","盛岡","水沢","佐賀","高知"];
+const CENTRAL_VENUES = ["東京","京都","阪神","中山","中京","新潟","福島","小倉","札幌","函館"];
+const ALL_VENUES = [...CENTRAL_VENUES, ...LOCAL_VENUES];
+function isLocalVenue(venue) { return LOCAL_VENUES.includes(venue); }
+
+// ============================================================
+// コーナー解析
+// ============================================================
+function parseCorners(cornerStr, finalRank) {
+  if (!cornerStr) return [];
+  const s = cornerStr.toString().trim();
+  if (!/^\d+$/.test(s)) return [];
+  function tryParseN(numCorners) {
+    const patterns = [];
+    function recurse(remaining, parts, depth) {
+      if (depth === numCorners) {
+        if (remaining.length === 0) patterns.push([...parts]);
+        return;
+      }
+      if (remaining.length >= 1) {
+        const n = parseInt(remaining[0]);
+        if (n >= 1 && n <= 9) recurse(remaining.substring(1), [...parts, n], depth + 1);
+      }
+      if (remaining.length >= 2) {
+        const n = parseInt(remaining.substring(0, 2));
+        if (n >= 10 && n <= 18) recurse(remaining.substring(2), [...parts, n], depth + 1);
+      }
+    }
+    recurse(s, [], 0);
+    return patterns;
+  }
+  const allCandidates = [];
+  for (const n of [4, 3, 2]) {
+    const patterns = tryParseN(n);
+    for (const p of patterns) allCandidates.push({ pattern: p, numCorners: n });
+  }
+  if (allCandidates.length === 0) return [];
+  if (allCandidates.length === 1) return allCandidates[0].pattern;
+  let best = allCandidates[0];
+  let bestScore = -Infinity;
+  for (const cand of allCandidates) {
+    const p = cand.pattern;
+    const last = p[p.length - 1];
+    const max = Math.max(...p);
+    const finalDiff = Math.abs(last - finalRank);
+    const maxDiff = Math.abs(max - finalRank);
+    let smoothness = 0;
+    for (let i = 0; i < p.length - 1; i++) smoothness += Math.abs(p[i] - p[i+1]);
+    let score = -finalDiff * 8 - smoothness * 0.3;
+    if (finalRank >= 5) score -= maxDiff * 2;
+    if (cand.numCorners === 4) score += 1;
+    if (score > bestScore) { bestScore = score; best = cand; }
+  }
+  return best.pattern;
+}
+
+function judgeRunStyleFromCorners(corners) {
+  if (!corners || corners.length === 0) return "中団";
+  const first = corners[0];
+  const avgPos = corners.reduce((s, c) => s + c, 0) / corners.length;
+  const maxPos = Math.max(...corners);
+  if (first === 1) return "逃げ";
+  if (first <= 2 && maxPos <= 4) return "逃げ";
+  if (first <= 5 && avgPos <= 6) return "先行";
+  if (avgPos >= 11) return "後方";
+  if (avgPos <= 10) return "中団";
+  return "後方";
+}
+
+// ============================================================
+// 共通パーサー
+// ============================================================
+function parseRaceData(rawText) {
+  const text = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = text.split("\n");
+  const raceInfo = {
+    venue: "", raceName: "", raceNumber: "", distance: 0,
+    surface: "ダ", condition: "良", time: "", grade: "", isLocal: false,
+  };
+
+  for (let i = 0; i < Math.min(25, lines.length); i++) {
+    const l = lines[i].trim();
+    if (ALL_VENUES.includes(l)) {
+      raceInfo.venue = l;
+      raceInfo.isLocal = isLocalVenue(l);
+    }
+    if (/^\d+R$/.test(l)) {
+      raceInfo.raceNumber = l;
+      if (lines[i+1]) raceInfo.raceName = lines[i+1].trim();
+    }
+    const condMatch = l.match(/(\d+)m\s+(ダート|芝)\s+(良|稍重|重|不良)\s+(\d+:\d+)/);
+    if (condMatch) {
+      raceInfo.distance = parseInt(condMatch[1]);
+      raceInfo.surface = condMatch[2] === "ダート" ? "ダ" : "芝";
+      raceInfo.condition = condMatch[3];
+      raceInfo.time = condMatch[4];
+    }
+    if (l.includes("クラス") || /^(未勝利|新馬|オープン|GI|GII|GIII)/.test(l)) {
+      if (l.includes("3勝") || l.includes("３勝")) raceInfo.grade = "３勝";
+      else if (l.includes("2勝") || l.includes("２勝")) raceInfo.grade = "２勝";
+      else if (l.includes("1勝") || l.includes("１勝")) raceInfo.grade = "１勝";
+      else if (l.includes("未勝利")) raceInfo.grade = "未勝利";
+      else if (l.includes("新馬")) raceInfo.grade = "新馬";
+      else if (l.includes("GIII")) raceInfo.grade = "GIII";
+      else if (l.includes("GII")) raceInfo.grade = "GII";
+      else if (l.includes("GI")) raceInfo.grade = "GI";
+      else if (l.includes("オープン")) raceInfo.grade = "オープン";
+    }
+    // 地方クラス
+    const localGrade = l.match(/^(JpnI{1,3}|A[12]|B[123]|C[1234]|重賞)\s+\d+m/);
+    if (localGrade) raceInfo.grade = localGrade[1];
+    // 地方の3歳/2歳混成戦
+    if (raceInfo.isLocal && !raceInfo.grade) {
+      if (l.match(/^\d+歳/)) raceInfo.grade = l.match(/^(\d+歳)/)[1];
+    }
+  }
+
+  const EXCLUDE_PATTERNS = [
+    /^\d{1,2}歳未勝利$/, /^\d{1,2}歳新馬$/, /^\d{1,2}上\d勝クラス$/,
+    /^\d{1,2}歳\d勝クラス$/,
+  ];
+  const isLikelyHorseName = (name) => {
+    if (EXCLUDE_PATTERNS.some(p => p.test(name))) return false;
+    if (!/[ァ-ヴー]/.test(name)) return false;
+    if (/(歳|未勝利|新馬|クラス|勝)/.test(name)) return false;
+    return true;
+  };
+
+  const horseBlocks = [];
+  let cur = null;
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const l = raw.trim();
+    if (!l) continue;
+    if (raw.includes("\t")) { if (cur) cur.lines.push(raw); continue; }
+    const horseMatch = l.match(/^(\d{1,2})([ァ-ヴー一-龯A-Za-zＡ-Ｚａ-ｚ]+)$/);
+    if (horseMatch) {
+      const num = parseInt(horseMatch[1]);
+      const name = horseMatch[2];
+      if (num >= 1 && num <= 18 && name.length >= 2 && isLikelyHorseName(name)) {
+        if (cur) horseBlocks.push(cur);
+        cur = { num, name, lines: [] };
+        continue;
+      }
+    }
+    if (cur) cur.lines.push(raw);
+  }
+  if (cur) horseBlocks.push(cur);
+
+  const horses = [];
+  for (const block of horseBlocks) {
+    const h = {
+      num: block.num, name: block.name,
+      jockey: "", weight: 0, bodyWeight: 0, bodyWeightDiff: 0,
+      popularity: 0, odds: 0, blinker: false,
+      s: 0, a: 0, sa: 0, tsa: 0, nsa: 0,
+      recentRaces: [], isFirstRun: false,
+    };
+    for (const ln of block.lines) {
+      const trimmed = ln.trim();
+      const jm = trimmed.match(/^(\d{1,2})(\S.+?)\s+([\d.]+)kg\s+(\d{3,4})kg\(([+\-]?\d+)kg\)(\s+B)?$/);
+      if (jm) {
+        h.jockey = jm[2].trim();
+        h.weight = parseFloat(jm[3]);
+        h.bodyWeight = parseInt(jm[4]);
+        h.bodyWeightDiff = parseInt(jm[5]);
+        if (jm[6]) h.blinker = true;
+        continue;
+      }
+      const jmLocal = trimmed.match(/^(\d{1,2})(\S.+?)\s+([\d.]+)kg\s+(\d{3,4})kg(\s+B)?$/);
+      if (jmLocal && !h.jockey) {
+        h.jockey = jmLocal[2].trim();
+        h.weight = parseFloat(jmLocal[3]);
+        h.bodyWeight = parseInt(jmLocal[4]);
+        h.bodyWeightDiff = 0;
+        if (jmLocal[5]) h.blinker = true;
+        continue;
+      }
+      const jm2 = trimmed.match(/^([ぁ-ん一-龯A-ZＡ-Ｚa-zａ-ｚ．・\s]+?)\s+([\d.]+)kg\s+(\d{3,4})kg$/);
+      if (jm2 && !h.jockey) {
+        h.jockey = jm2[1].trim();
+        h.weight = parseFloat(jm2[2]);
+        h.bodyWeight = parseInt(jm2[3]);
+        h.isFirstRun = true;
+        continue;
+      }
+      const jm3 = trimmed.match(/^([ぁ-ん一-龯A-ZＡ-Ｚa-zａ-ｚ．・\s]+?)\s+([\d.]+)kg$/);
+      if (jm3 && !h.jockey) {
+        h.jockey = jm3[1].trim();
+        h.weight = parseFloat(jm3[2]);
+        h.bodyWeight = 0;
+        h.isFirstRun = true;
+        continue;
+      }
+      const idxCentral = trimmed.match(/\[(\d+)\]\s*\(([\d.]+)\)\s*S:(\d+)\s+A:(\d+)\s+SA:(\d+)\s+TSA:(\d+)\s+NSA:(\d+)/);
+      if (idxCentral) {
+        h.popularity = parseInt(idxCentral[1]);
+        h.odds = parseFloat(idxCentral[2]);
+        h.s = parseInt(idxCentral[3]); h.a = parseInt(idxCentral[4]);
+        h.sa = parseInt(idxCentral[5]); h.tsa = parseInt(idxCentral[6]); h.nsa = parseInt(idxCentral[7]);
+        continue;
+      }
+      const idxLocal = trimmed.match(/\[(\d+)\]\s*\(([\d.]+)\)\s*S:(\d+)\s+A:(\d+)\s+SA:(\d+)\s+TSA:(\d+)\s*$/);
+      if (idxLocal) {
+        h.popularity = parseInt(idxLocal[1]);
+        h.odds = parseFloat(idxLocal[2]);
+        h.s = parseInt(idxLocal[3]); h.a = parseInt(idxLocal[4]);
+        h.sa = parseInt(idxLocal[5]); h.tsa = parseInt(idxLocal[6]);
+        h.nsa = 0;
+        continue;
+      }
+      const idxNoOdds = trimmed.match(/^S:(\d+)\s+A:(\d+)\s+SA:(\d+)\s+TSA:(\d+)\s*$/);
+      if (idxNoOdds) {
+        h.s = parseInt(idxNoOdds[1]); h.a = parseInt(idxNoOdds[2]);
+        h.sa = parseInt(idxNoOdds[3]); h.tsa = parseInt(idxNoOdds[4]);
+        h.nsa = 0;
+        continue;
+      }
+      if (ln.includes("\t")) {
+        const fields = ln.split("\t");
+        if (fields.length < 16 || !/^\d+$/.test(fields[0])) continue;
+        const rank = parseInt(fields[0]);
+        if (rank < 1 || rank > 30) continue;
+        let courseIdx, distIdx, condIdx, gradeIdx, blinkerIdx, bwIdx, jockeyIdx, raceNameIdx;
+        const isLocalRow = fields.length <= 20;
+        if (isLocalRow) {
+          courseIdx = 10; distIdx = 11; condIdx = 12; gradeIdx = 13;
+          blinkerIdx = 15; bwIdx = 16; jockeyIdx = 18; raceNameIdx = 19;
+        } else {
+          courseIdx = 12; distIdx = 13; condIdx = 14; gradeIdx = 15;
+          blinkerIdx = 16; bwIdx = 17; jockeyIdx = 19; raceNameIdx = 21;
+        }
+        const distField = fields[distIdx] || "";
+        const surf = distField.startsWith("ﾀﾞ") || distField.startsWith("ダ") ? "ダ" : "芝";
+        const distNum = parseInt(distField.replace(/[ﾀﾞダ芝m]/g, "")) || 0;
+        const cornersRaw = fields[3] || "";
+        const cornersArr = parseCorners(cornersRaw, rank);
+        const runStyle = judgeRunStyleFromCorners(cornersArr);
+        h.recentRaces.push({
+          rank, margin: parseFloat(fields[1]) || 0,
+          time: fields[2], corner: cornersRaw, cornersArr, runStyle,
+          agari: parseFloat(fields[4]) || 0, agariDiff: parseFloat(fields[5]) || 0,
+          popularity: parseInt(fields[6]) || 0,
+          s: parseFloat(fields[7]) || 0,
+          a: parseFloat(fields[8]) || 0,
+          sa: parseFloat(fields[9]) || 0,
+          courseCode: fields[courseIdx] || "",
+          dist: distNum, surface: surf,
+          condition: fields[condIdx] || "",
+          grade: fields[gradeIdx]?.trim() || "",
+          blinker: fields[blinkerIdx]?.trim() === "B",
+          bodyWeight: parseInt(fields[bwIdx]) || 0,
+          pastJockey: fields[jockeyIdx]?.trim() || "",
+          raceName: fields[raceNameIdx] || "",
+        });
+      }
+    }
+    if (h.num && h.name) horses.push(h);
+  }
+  return { raceInfo, horses };
+}
+
+
+// ============================================================
+// 予想ロジック
+// ◎ = ヘッダーA値が一位
+// ○ = ヘッダーTSA値が一位
+// ▲ = ヘッダーSA値が一位
+// △ = ヘッダーS値が一位
+// ⭐︎ = 前走の上がり3F(アガリ)が最速
+// ============================================================
+function runPrediction(raceData) {
+  const { raceInfo, horses } = raceData;
+  if (!horses.length) return null;
+
+  // 各指標で1位の馬を取得 (同値は最初の1頭)
+  function topByField(field) {
+    let best = null;
+    for (const h of horses) {
+      const v = h[field] || 0;
+      if (v > 0 && (best === null || v > best.val)) {
+        best = { num: h.num, val: v };
+      }
+    }
+    return best;
+  }
+
+  // 前走の上がり3Fが最速の馬 (数値が小さいほど速い)
+  function topByPrevAgari() {
+    let best = null;
+    for (const h of horses) {
+      const last = h.recentRaces[0];
+      if (!last) continue;
+      const v = last.agari || 0;
+      if (v > 0 && (best === null || v < best.val)) {
+        best = { num: h.num, val: v };
+      }
+    }
+    return best;
+  }
+
+  // ============================================================
+  // [ヘッダー値ベース] 印
+  // ============================================================
+  const topA   = topByField('a');
+  const topTSA = topByField('tsa');
+  const topSA  = topByField('sa');
+  const topS   = topByField('s');
+  const topAgari = topByPrevAgari();
+
+  const marks = {};
+  if (topA)   marks[topA.num]   = (marks[topA.num]   || '') + '◎';
+  if (topTSA) marks[topTSA.num] = (marks[topTSA.num] || '') + '○';
+  if (topSA)  marks[topSA.num]  = (marks[topSA.num]  || '') + '▲';
+  if (topS)   marks[topS.num]   = (marks[topS.num]   || '') + '△';
+  if (topAgari) marks[topAgari.num] = (marks[topAgari.num] || '') + '⭐︎';
+
+  // ============================================================
+  // [前5走最高値ベース] 印
+  // ============================================================
+  // 各馬の前5走最高値を計算
+  function maxOfPrev(horse, field, smallerIsBetter = false) {
+    const races = horse.recentRaces.slice(0, 5);
+    const vals = races.map(r => r[field] || 0).filter(v => v > 0);
+    if (!vals.length) return 0;
+    return smallerIsBetter ? Math.min(...vals) : Math.max(...vals);
+  }
+
+  // 全馬の前5走最高値を取得
+  const horsesWithMax = horses.map(h => ({
+    num: h.num,
+    maxS:  maxOfPrev(h, 's'),
+    maxA:  maxOfPrev(h, 'a'),
+    maxSA: maxOfPrev(h, 'sa'),
+    maxAgari: maxOfPrev(h, 'agari', true), // 上がりは小さいほど速い
+  }));
+
+  function topByMaxField(field, smallerIsBetter = false) {
+    let best = null;
+    for (const m of horsesWithMax) {
+      const v = m[field];
+      if (v > 0 && (best === null || (smallerIsBetter ? v < best.val : v > best.val))) {
+        best = { num: m.num, val: v };
+      }
+    }
+    return best;
+  }
+
+  const maxTopA  = topByMaxField('maxA');
+  const maxTopS  = topByMaxField('maxS');
+  const maxTopSA = topByMaxField('maxSA');
+  const maxTopAgari = topByMaxField('maxAgari', true);
+
+  // ⭐︎ = 5位以内出現回数一位
+  // 最高5位以内: 前5走最高S値・最高A値・最高SA値の各ランキングで5位以内
+  // ヘッダー5位以内: ヘッダーS値・A値・SA値・TSA値の各ランキングで5位以内
+  function getTop5Nums(list, valFn, smallerIsBetter = false) {
+    const valid = list.map(item => ({ num: item.num, val: valFn(item) })).filter(x => x.val > 0);
+    valid.sort((a, b) => smallerIsBetter ? a.val - b.val : b.val - a.val);
+    // 上位5頭の値を見て、同値含めて含める
+    if (!valid.length) return new Set();
+    const cutoffIdx = Math.min(4, valid.length - 1);
+    const cutoff = valid[cutoffIdx].val;
+    return new Set(valid.filter(x => smallerIsBetter ? x.val <= cutoff : x.val >= cutoff).map(x => x.num));
+  }
+
+  // 最高値5位以内 (S・A・SA)
+  const maxTop5S  = getTop5Nums(horsesWithMax, x => x.maxS);
+  const maxTop5A  = getTop5Nums(horsesWithMax, x => x.maxA);
+  const maxTop5SA = getTop5Nums(horsesWithMax, x => x.maxSA);
+
+  // ヘッダー値5位以内 (S・A・SA・TSA)
+  const headerTop5S   = getTop5Nums(horses, h => h.s || 0);
+  const headerTop5A   = getTop5Nums(horses, h => h.a || 0);
+  const headerTop5SA  = getTop5Nums(horses, h => h.sa || 0);
+  const headerTop5TSA = getTop5Nums(horses, h => h.tsa || 0);
+
+  // 各馬の出現回数を数える
+  const appearanceCount = {};
+  for (const h of horses) {
+    let cnt = 0;
+    if (maxTop5S.has(h.num)) cnt++;
+    if (maxTop5A.has(h.num)) cnt++;
+    if (maxTop5SA.has(h.num)) cnt++;
+    if (headerTop5S.has(h.num)) cnt++;
+    if (headerTop5A.has(h.num)) cnt++;
+    if (headerTop5SA.has(h.num)) cnt++;
+    if (headerTop5TSA.has(h.num)) cnt++;
+    appearanceCount[h.num] = cnt;
+  }
+
+  // 出現回数一位を取得
+  let maxStarTop = null;
+  for (const h of horses) {
+    const cnt = appearanceCount[h.num];
+    if (cnt > 0 && (maxStarTop === null || cnt > maxStarTop.val)) {
+      maxStarTop = { num: h.num, val: cnt };
+    }
+  }
+
+  const maxMarks = {};
+  if (maxTopA)  maxMarks[maxTopA.num]  = (maxMarks[maxTopA.num]  || '') + '◎';
+  if (maxTopS)  maxMarks[maxTopS.num]  = (maxMarks[maxTopS.num]  || '') + '○';
+  if (maxTopSA) maxMarks[maxTopSA.num] = (maxMarks[maxTopSA.num] || '') + '▲';
+  if (maxTopAgari) maxMarks[maxTopAgari.num] = (maxMarks[maxTopAgari.num] || '') + '△';
+  if (maxStarTop) maxMarks[maxStarTop.num] = (maxMarks[maxStarTop.num] || '') + '⭐︎';
+
+  // 各馬の情報をまとめる
+  const ranked = horses.map(h => {
+    const last = h.recentRaces[0];
+    const mx = horsesWithMax.find(x => x.num === h.num);
+    return {
+      ...h,
+      mark: marks[h.num] || '',
+      maxMark: maxMarks[h.num] || '',
+      prevAgari: last ? (last.agari || 0) : 0,
+      prevS: last ? (last.s || 0) : 0,
+      prevA: last ? (last.a || 0) : 0,
+      maxS: mx?.maxS || 0,
+      maxA: mx?.maxA || 0,
+      maxSA: mx?.maxSA || 0,
+      maxAgari: mx?.maxAgari || 0,
+      appearance: appearanceCount[h.num] || 0,
+    };
+  });
+
+  return {
+    ranked, marks, maxMarks, raceInfo,
+    topA, topTSA, topSA, topS, topAgari,
+    maxTopA, maxTopS, maxTopSA, maxTopAgari, maxStarTop,
+  };
+}
+
+// ============================================================
+// UI
+// ============================================================
+
+
+// ============================================================
+// 馬番バッジHTML生成
+// ============================================================
+function horseNumHTML(num, total, size) {
+  const wakuIdx = getWakuNum(num, total) - 1;
+  const c = WAKU_COLORS[wakuIdx] || WAKU_COLORS[7];
+  const textShadow = c.text === '#ffffff' ? '0 1px 3px rgba(0,0,0,0.6)' : 'none';
+  const sizeClass = size === 'lg' ? 'horse-num-lg' : size === 'sm' ? 'horse-num-sm' : 'horse-num-md';
+  return `<span class="horse-num ${sizeClass}" style="
+    background: linear-gradient(160deg, ${c.grad} 0%, ${c.bg} 100%);
+    color: ${c.text};
+    border: 2px solid ${c.border};
+    box-shadow: 0 2px 4px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.3);
+    text-shadow: ${textShadow};
+  ">${num}</span>`;
+}
+
+// ============================================================
+// 結果レンダリング
+// ============================================================
+function renderResult(result) {
+  const total = result.ranked.length;
+
+  // ヘッダー値ベース印カード
+  const headerCards = [
+    ['◎', result.topA, 'A値'],
+    ['○', result.topTSA, 'TSA値'],
+    ['▲', result.topSA, 'SA値'],
+    ['△', result.topS, 'S値'],
+    ['⭐︎', result.topAgari, '前走上がり']
+  ].map(([mk, info, label]) => {
+    if (!info) return '';
+    const h = result.ranked.find(x => x.num === info.num);
+    if (!h) return '';
+    const clr = MARK_COLOR[mk];
+    return `
+      <div class="mark-card" style="border-left: 5px solid ${clr};">
+        <div class="mark-big" style="color: ${clr};">${mk}</div>
+        ${horseNumHTML(h.num, total, 'lg')}
+        <div style="flex:1;">
+          <div class="horse-name">${h.name}</div>
+          <div class="horse-meta">${h.jockey} ／ ${h.popularity}人気 ${h.odds}倍</div>
+        </div>
+        <div class="horse-stat">
+          <div class="horse-stat-label">${label}</div>
+          <div class="horse-stat-val" style="color: ${clr};">${info.val}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // 前5走最高値ベース印カード
+  const maxCards = [
+    ['◎', result.maxTopA, '前5走A値最高'],
+    ['○', result.maxTopS, '前5走S値最高'],
+    ['▲', result.maxTopSA, '前5走SA値最高'],
+    ['△', result.maxTopAgari, '前5走上がり最速'],
+    ['⭐︎', result.maxStarTop, '5位以内出現回数']
+  ].map(([mk, info, label]) => {
+    if (!info) return '';
+    const h = result.ranked.find(x => x.num === info.num);
+    if (!h) return '';
+    const clr = MARK_COLOR[mk];
+    const valDisplay = mk === '⭐︎' ? `${info.val}回` : info.val;
+    return `
+      <div class="mark-card" style="border-left: 5px solid ${clr};">
+        <div class="mark-big" style="color: ${clr};">${mk}</div>
+        ${horseNumHTML(h.num, total, 'lg')}
+        <div style="flex:1;">
+          <div class="horse-name">${h.name}</div>
+          <div class="horse-meta">${h.jockey} ／ ${h.popularity}人気 ${h.odds}倍</div>
+        </div>
+        <div class="horse-stat">
+          <div class="horse-stat-label">${label}</div>
+          <div class="horse-stat-val" style="color: ${clr};">${valDisplay}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  // 出現回数ランキング
+  const sortedRanked = [...result.ranked].sort((a, b) => b.appearance - a.appearance);
+  let prevAppearance = -1;
+  let rankNum = 0;
+  const rankingRows = sortedRanked.map((h, idx) => {
+    const isTop = h.appearance === sortedRanked[0].appearance && h.appearance > 0;
+    const isMarketSignal = h.appearance === 0 && h.odds > 0 && h.odds < 10;
+    let rankDisplay = '';
+    if (h.appearance !== prevAppearance) {
+      rankNum = idx + 1;
+      rankDisplay = `${rankNum}位`;
+      prevAppearance = h.appearance;
+    }
+    const rankColor = isTop ? MARK_COLOR['⭐︎'] : '#7a7a8a';
+    const oddsColor = isMarketSignal ? '#ff6666' : '#7a7a8a';
+    const nameColor = isMarketSignal ? '#ff6666' : '#ece0cc';
+    const appColor = isTop ? MARK_COLOR['⭐︎'] : '#9a9aaa';
+    return `
+      <div class="ranking-row ${isMarketSignal ? 'market-signal' : ''}">
+        <div style="font-size:12px; color:${rankColor}; font-weight:${isTop ? 900 : 500}; text-align:center;">${rankDisplay}</div>
+        ${horseNumHTML(h.num, total, 'sm')}
+        <div>
+          <div style="font-size:12px; color:${nameColor}; font-weight:${isMarketSignal ? 700 : 400}; display:flex; align-items:center;">
+            ${h.name}
+            ${isMarketSignal ? '<span class="market-badge">市場サイン</span>' : ''}
+          </div>
+          <div style="font-size:9px; color:#5a5a6a;">${h.jockey} ／ ${h.popularity}人気</div>
+        </div>
+        <div style="text-align:right; font-size:11px; font-weight:700; color:${oddsColor};">${h.odds ? h.odds + '倍' : '—'}</div>
+        <div style="text-align:right; font-size:14px; font-weight:900; color:${appColor};">${h.appearance}回</div>
+      </div>`;
+  }).join('');
+
+  // 全馬一覧
+  const allRows = result.ranked.map(h => {
+    const statColor = (isTop, mkKey) => isTop ? MARK_COLOR[mkKey] : '#9a9aaa';
+    const statWeight = (isTop) => isTop ? 900 : 500;
+    const maxStatColor = (isTop, mkKey) => isTop ? MARK_COLOR[mkKey] : '#7a9a7a';
+    return `
+      <div class="all-row">
+        <div class="all-row-header">
+          ${horseNumHTML(h.num, total, 'sm')}
+          <div>
+            <div style="font-size:12px; color:#ece0cc; font-weight:600;">${h.name}</div>
+            <div style="font-size:9px; color:#5a5a6a; margin-top:1px;">${h.jockey} ／ ${h.popularity}人気</div>
+          </div>
+          <div style="text-align:center;">${h.mark ? `<span style="font-size:11px; font-weight:900; color:#ffd23a;">${h.mark}</span>` : ''}</div>
+          <div style="text-align:center;">${h.maxMark ? `<span style="font-size:11px; font-weight:900; color:#7acf8a;">${h.maxMark}</span>` : ''}</div>
+        </div>
+        <div class="all-row-stats">
+          <div style="color:#5a5a70; letter-spacing:1px;">ヘッダー</div>
+          <div style="text-align:center; color:${statColor(result.topS?.num === h.num, '△')}; font-weight:${statWeight(result.topS?.num === h.num)};">S ${h.s || '—'}</div>
+          <div style="text-align:center; color:${statColor(result.topA?.num === h.num, '◎')}; font-weight:${statWeight(result.topA?.num === h.num)};">A ${h.a || '—'}</div>
+          <div style="text-align:center; color:${statColor(result.topSA?.num === h.num, '▲')}; font-weight:${statWeight(result.topSA?.num === h.num)};">SA ${h.sa || '—'}</div>
+          <div style="text-align:center; color:${statColor(result.topTSA?.num === h.num, '○')}; font-weight:${statWeight(result.topTSA?.num === h.num)};">TSA ${h.tsa || '—'}</div>
+          <div style="text-align:center; color:${statColor(result.topAgari?.num === h.num, '⭐︎')}; font-weight:${statWeight(result.topAgari?.num === h.num)};">前走上り ${h.prevAgari || '—'}</div>
+        </div>
+        <div class="all-row-stats">
+          <div style="color:#5a5a70; letter-spacing:1px;">最高値</div>
+          <div style="text-align:center; color:${maxStatColor(result.maxTopS?.num === h.num, '○')}; font-weight:${statWeight(result.maxTopS?.num === h.num)};">S ${h.maxS || '—'}</div>
+          <div style="text-align:center; color:${maxStatColor(result.maxTopA?.num === h.num, '◎')}; font-weight:${statWeight(result.maxTopA?.num === h.num)};">A ${h.maxA || '—'}</div>
+          <div style="text-align:center; color:${maxStatColor(result.maxTopSA?.num === h.num, '▲')}; font-weight:${statWeight(result.maxTopSA?.num === h.num)};">SA ${h.maxSA || '—'}</div>
+          <div style="text-align:center; color:#7a9a7a;">—</div>
+          <div style="text-align:center; color:${maxStatColor(result.maxTopAgari?.num === h.num, '△')}; font-weight:${statWeight(result.maxTopAgari?.num === h.num)};">上り ${h.maxAgari || '—'}</div>
+        </div>
+        <div style="margin-top:4px; font-size:9px; color:${result.maxStarTop?.num === h.num ? MARK_COLOR['⭐︎'] : '#5a5a70'}; font-weight:${result.maxStarTop?.num === h.num ? 900 : 500}; text-align:right;">5位以内出現: ${h.appearance}回</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:12px;">
+      <div class="race-title">${result.raceInfo.venue} ${result.raceInfo.raceNumber} ${result.raceInfo.raceName}</div>
+      <div class="race-info">
+        <span>${result.raceInfo.surface}${result.raceInfo.distance}m</span>
+        <span>馬場:${result.raceInfo.condition}</span>
+        <span>${result.ranked.length}頭立て</span>
+        ${result.raceInfo.grade ? `<span>${result.raceInfo.grade}</span>` : ''}
+      </div>
+    </div>
+
+    <div class="mark-desc">
+      <div style="font-size:10px; color:#ffd23a; margin-bottom:4px; letter-spacing:2px;">ヘッダー値ベース</div>
+      <div>
+        <span style="color:${MARK_COLOR['◎']}; font-weight:900;">◎</span> A値一位　
+        <span style="color:${MARK_COLOR['○']}; font-weight:900;">○</span> TSA値一位　
+        <span style="color:${MARK_COLOR['▲']}; font-weight:900;">▲</span> SA値一位　
+        <span style="color:${MARK_COLOR['△']}; font-weight:900;">△</span> S値一位　
+        <span style="color:${MARK_COLOR['⭐︎']}; font-weight:900;">⭐︎</span> 前走上がり最速
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div class="section-label">ヘッダー値ベース</div>
+      ${headerCards}
+    </div>
+
+    <div class="mark-desc">
+      <div style="font-size:10px; color:#7acf8a; margin-bottom:4px; letter-spacing:2px;">前5走最高値ベース</div>
+      <div>
+        <span style="color:${MARK_COLOR['◎']}; font-weight:900;">◎</span> 前5走A値最高　
+        <span style="color:${MARK_COLOR['○']}; font-weight:900;">○</span> 前5走S値最高　
+        <span style="color:${MARK_COLOR['▲']}; font-weight:900;">▲</span> 前5走SA値最高　
+        <span style="color:${MARK_COLOR['△']}; font-weight:900;">△</span> 前5走上がり最速　
+        <span style="color:${MARK_COLOR['⭐︎']}; font-weight:900;">⭐︎</span> 5位以内出現回数一位
+      </div>
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div class="section-label">前5走最高値ベース</div>
+      ${maxCards}
+    </div>
+
+    <div style="margin-bottom:16px;">
+      <div class="section-label">5位以内出現回数ランキング</div>
+      <div style="background:#1c1c28; border:1px solid #2a2a3a; border-radius:6px; padding:10px 14px;">
+        ${rankingRows}
+      </div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <div class="section-label">全馬</div>
+      ${allRows}
+    </div>
+  `;
+}
+
+// ============================================================
+// イベントハンドラ
+// ============================================================
+const dataInput = document.getElementById('dataInput');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const clearBtn = document.getElementById('clearBtn');
+const errorMsg = document.getElementById('errorMsg');
+const inputView = document.getElementById('inputView');
+const resultView = document.getElementById('resultView');
+
+dataInput.addEventListener('input', () => {
+  analyzeBtn.disabled = !dataInput.value.trim();
+});
+
+analyzeBtn.addEventListener('click', () => {
+  errorMsg.style.display = 'none';
+  try {
+    const parsed = parseRaceData(dataInput.value);
+    if (!parsed.horses.length) {
+      errorMsg.textContent = '馬データを検出できませんでした。uma-x.jpのテキストをそのまま貼り付けてください。';
+      errorMsg.style.display = 'block';
+      return;
+    }
+    const result = runPrediction(parsed);
+    resultView.innerHTML = renderResult(result);
+    inputView.style.display = 'none';
+    resultView.style.display = 'block';
+    clearBtn.style.display = 'block';
+    window.scrollTo(0, 0);
+  } catch(e) {
+    errorMsg.textContent = '解析エラー: ' + e.message;
+    errorMsg.style.display = 'block';
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  dataInput.value = '';
+  analyzeBtn.disabled = true;
+  resultView.style.display = 'none';
+  resultView.innerHTML = '';
+  inputView.style.display = 'block';
+  clearBtn.style.display = 'none';
+  errorMsg.style.display = 'none';
+});
+</script>
+</body>
+</html>
